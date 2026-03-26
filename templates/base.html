@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}工厂零件管理系统{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary: #1a56a7;
+            --sidebar-bg: #0d2137;
+            --sidebar-width: 240px;
+        }
+        body { background: #f0f4f8; font-family: 'Segoe UI', sans-serif; }
+        .sidebar {
+            position: fixed; top: 0; left: 0; height: 100vh;
+            width: var(--sidebar-width); background: var(--sidebar-bg);
+            color: #fff; display: flex; flex-direction: column;
+            z-index: 100; box-shadow: 2px 0 8px rgba(0,0,0,.3);
+        }
+        .sidebar-brand {
+            padding: 22px 20px 18px; font-size: 1.1rem; font-weight: 700;
+            border-bottom: 1px solid rgba(255,255,255,.1);
+            color: #7ecfff; letter-spacing: .5px;
+        }
+        .sidebar-brand small { display: block; font-size: .72rem; color: #aac; font-weight:400; margin-top:2px; }
+        .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+        .sidebar-nav .nav-link {
+            color: #b0c8e8; padding: 10px 20px; display: flex;
+            align-items: center; gap: 10px; border-radius: 0;
+            transition: background .15s;
+        }
+        .sidebar-nav .nav-link:hover, .sidebar-nav .nav-link.active {
+            background: rgba(255,255,255,.1); color: #fff;
+        }
+        .sidebar-nav .nav-link i { font-size: 1.1rem; }
+        .sidebar-footer {
+            padding: 14px 20px; border-top: 1px solid rgba(255,255,255,.1);
+            font-size: .82rem; color: #7a9abf;
+        }
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh; padding: 0;
+        }
+        .topbar {
+            background: #fff; padding: 12px 28px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08);
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 50;
+        }
+        .topbar .page-title { font-size: 1.15rem; font-weight: 600; color: #1a2b40; }
+        .content-area { padding: 28px; }
+        .card { border: none; box-shadow: 0 2px 8px rgba(0,0,0,.07); border-radius: 10px; }
+        .card-header { border-radius: 10px 10px 0 0 !important; font-weight: 600; }
+        .badge-sent { background: #e3f0ff; color: #1a56a7; }
+        .badge-done { background: #d4edda; color: #155724; }
+        .badge-pending { background: #fff3cd; color: #856404; }
+        .btn-primary { background: var(--primary); border-color: var(--primary); }
+        .stat-card {
+            border-radius: 12px; padding: 20px 24px;
+            color: #fff; font-weight: 600;
+        }
+        .elapsed-badge {
+            font-size: .78rem; background: #fef3d0;
+            color: #7a5c00; border-radius: 20px; padding: 2px 10px;
+        }
+        @media(max-width:768px) {
+            .sidebar { width: 0; overflow: hidden; }
+            .main-content { margin-left: 0; }
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+{% if session.user_id %}
+<div class="sidebar">
+    <div class="sidebar-brand">
+        <i class="bi bi-gear-wide-connected"></i> 零件管理系统
+        <small>{{ session.display_name }}</small>
+    </div>
+    <nav class="sidebar-nav">
+        {% if session.role == 'company' %}
+        <a href="{{ url_for('company_dashboard') }}" class="nav-link {% if request.endpoint=='company_dashboard' %}active{% endif %}">
+            <i class="bi bi-speedometer2"></i> 仪表板
+        </a>
+        <a href="{{ url_for('manage_categories') }}" class="nav-link {% if request.endpoint in ['manage_categories','manage_subcategories','manage_parts'] %}active{% endif %}">
+            <i class="bi bi-diagram-3"></i> 机器分类管理
+        </a>
+        <a href="{{ url_for('manage_suppliers') }}" class="nav-link {% if request.endpoint=='manage_suppliers' %}active{% endif %}">
+            <i class="bi bi-people"></i> 供应商管理
+        </a>
+        {% else %}
+        <a href="{{ url_for('supplier_dashboard') }}" class="nav-link {% if request.endpoint=='supplier_dashboard' %}active{% endif %}">
+            <i class="bi bi-box-seam"></i> 我的零件任务
+        </a>
+        {% endif %}
+    </nav>
+    <div class="sidebar-footer">
+        <a href="{{ url_for('logout') }}" class="text-decoration-none text-secondary">
+            <i class="bi bi-box-arrow-left"></i> 退出登录
+        </a>
+    </div>
+</div>
+{% endif %}
+<div class="main-content">
+    <div class="topbar">
+        <span class="page-title">{% block page_title %}{% endblock %}</span>
+        {% if session.user_id %}
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge {% if session.role=='company' %}bg-primary{% else %}bg-success{% endif %} rounded-pill px-3">
+                {{ '公司端' if session.role=='company' else '供应商端' }}
+            </span>
+            <span class="text-muted small">{{ session.display_name }}</span>
+        </div>
+        {% endif %}
+    </div>
+    <div class="content-area">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }} alert-dismissible fade show py-2" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

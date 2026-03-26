@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>登录 - 工厂零件管理系统</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0d2137 0%, #1a56a7 100%);
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        }
+        .login-card {
+            background: #fff; border-radius: 16px; padding: 40px 36px;
+            box-shadow: 0 8px 40px rgba(0,0,0,.3); width: 380px; max-width: 95vw;
+        }
+        .login-logo { text-align: center; margin-bottom: 28px; }
+        .login-logo i { font-size: 2.6rem; color: #1a56a7; }
+        .login-logo h4 { font-weight: 700; color: #1a2b40; margin-top: 8px; margin-bottom: 2px; }
+        .login-logo p { color: #888; font-size: .85rem; }
+        .btn-login { background: #1a56a7; border: none; width: 100%; padding: 10px; font-size: 1rem; border-radius: 8px; }
+        .btn-login:hover { background: #1040a0; }
+        .form-control:focus { border-color: #1a56a7; box-shadow: 0 0 0 .2rem rgba(26,86,167,.2); }
+        .hint-box { background: #f0f4fb; border-radius: 8px; padding: 10px 14px; font-size: .8rem; color: #556; margin-top: 16px; }
+    </style>
+</head>
+<body>
+<div class="login-card">
+    <div class="login-logo">
+        <i class="bi bi-gear-wide-connected"></i>
+        <h4>工厂零件管理系统</h4>
+        <p>Factory Parts Management</p>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} py-2 small">{{ msg }}</div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+    <form method="post">
+        <div class="mb-3">
+            <label class="form-label fw-semibold">用户名</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                <input type="text" name="username" class="form-control" placeholder="请输入用户名" required autofocus>
+            </div>
+        </div>
+        <div class="mb-4">
+            <label class="form-label fw-semibold">密码</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                <input type="password" name="password" class="form-control" placeholder="请输入密码" required>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-login text-white fw-semibold">
+            <i class="bi bi-box-arrow-in-right me-1"></i> 登录
+        </button>
+    </form>
+    <div class="hint-box">
+        <i class="bi bi-info-circle me-1"></i>
+        默认管理员账号：<strong>admin</strong> / 密码：<strong>admin123</strong>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

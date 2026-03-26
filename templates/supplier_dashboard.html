@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% block title %}我的零件任务 - 供应商端{% endblock %}
+{% block page_title %}我的零件任务{% endblock %}
+{% block head %}
+<style>
+.part-card { border-radius: 10px; transition: box-shadow .15s; }
+.part-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.12); }
+.part-card.done { border-left: 4px solid #27ae60; }
+.part-card.in-progress { border-left: 4px solid #f39c12; }
+.elapsed-big { font-size: 1.05rem; font-weight: 700; color: #e67e22; }
+</style>
+{% endblock %}
+{% block content %}
+
+<!-- 统计栏 -->
+{% set total = parts|length %}
+{% set done = parts|selectattr('is_completed')|list|length %}
+{% set in_prog = total - done %}
+<div class="row g-3 mb-4">
+    <div class="col-4">
+        <div class="card text-center py-3">
+            <div style="font-size:1.6rem;font-weight:700;color:#1a56a7">{{ total }}</div>
+            <div class="text-muted small">发给我的零件</div>
+        </div>
+    </div>
+    <div class="col-4">
+        <div class="card text-center py-3">
+            <div style="font-size:1.6rem;font-weight:700;color:#e67e22">{{ in_prog }}</div>
+            <div class="text-muted small">进行中</div>
+        </div>
+    </div>
+    <div class="col-4">
+        <div class="card text-center py-3">
+            <div style="font-size:1.6rem;font-weight:700;color:#27ae60">{{ done }}</div>
+            <div class="text-muted small">已完成</div>
+        </div>
+    </div>
+</div>
+
+{% if parts %}
+<!-- 进行中 -->
+{% set in_prog_parts = parts|rejectattr('is_completed')|list %}
+{% if in_prog_parts %}
+<h6 class="fw-bold mb-3 text-warning"><i class="bi bi-clock me-1"></i>进行中（{{ in_prog_parts|length }}）</h6>
+<div class="row g-3 mb-4">
+    {% for part in in_prog_parts %}
+    <div class="col-lg-6 col-xl-4">
+        <div class="card part-card in-progress">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between mb-2">
+                    <div>
+                        <div class="fw-bold">{{ part.name }}</div>
+                        <div class="text-muted small">
+                            <i class="bi bi-diagram-3 me-1"></i>
+                            {{ part.subcategory.category.name }} &rsaquo; {{ part.subcategory.name }}
+                        </div>
+                    </div>
+                    <span class="badge bg-warning text-dark">进行中</span>
+                </div>
+                <!-- 图纸 -->
+                {% if part.pdf_filename %}
+                <div class="mb-2">
+                    <a href="{{ url_for('uploaded_file', filename=part.pdf_filename) }}" target="_blank"
+                       class="btn btn-sm btn-outline-danger w-100">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>查看图纸：{{ part.pdf_original_name or '图纸' }}
+                    </a>
+                </div>
+                {% else %}
+                <div class="mb-2 text-muted small"><i class="bi bi-exclamation-circle me-1"></i>暂无图纸</div>
+                {% endif %}
+                <!-- 时间 -->
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <div class="text-muted small">
+                        <i class="bi bi-calendar-event me-1"></i>
+                        {{ part.sent_at.strftime('%Y-%m-%d %H:%M') }}
+                    </div>
+                    <div class="elapsed-big" id="elapsed-{{ part.id }}"
+                         data-sent="{{ part.sent_at.timestamp() }}">
+                        {{ part.elapsed_str() }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- 已完成 -->
+{% set done_parts = parts|selectattr('is_completed')|list %}
+{% if done_parts %}
+<h6 class="fw-bold mb-3 text-success"><i class="bi bi-check-circle me-1"></i>已完成（{{ done_parts|length }}）</h6>
+<div class="row g-3">
+    {% for part in done_parts %}
+    <div class="col-lg-6 col-xl-4">
+        <div class="card part-card done">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between mb-2">
+                    <div>
+                        <div class="fw-bold text-success"><i class="bi bi-check-circle me-1"></i>{{ part.name }}</div>
+                        <div class="text-muted small">
+                            {{ part.subcategory.category.name }} &rsaquo; {{ part.subcategory.name }}
+                        </div>
+                    </div>
+                    <span class="badge bg-success">已完成</span>
+                </div>
+                {% if part.pdf_filename %}
+                <a href="{{ url_for('uploaded_file', filename=part.pdf_filename) }}" target="_blank"
+                   class="btn btn-sm btn-outline-danger w-100 mb-2">
+                    <i class="bi bi-file-earmark-pdf me-1"></i>{{ part.pdf_original_name or '查看图纸' }}
+                </a>
+                {% endif %}
+                <div class="d-flex justify-content-between text-muted small mt-1">
+                    <span>发出：{{ part.sent_at.strftime('%m-%d %H:%M') }}</span>
+                    <span class="text-success fw-semibold">耗时：{{ part.elapsed_str() }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="text-center text-muted py-5">
+    <i class="bi bi-inbox" style="font-size:3rem"></i>
+    <p class="mt-2">目前没有发给您的零件任务</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function formatElapsed(seconds) {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    let parts = [];
+    if (days) parts.push(days + '天');
+    if (hours) parts.push(hours + '小时');
+    parts.push(minutes + '分钟');
+    return parts.join('');
+}
+function updateTimers() {
+    const now = Date.now() / 1000;
+    document.querySelectorAll('[data-sent]').forEach(el => {
+        const sent = parseFloat(el.getAttribute('data-sent'));
+        el.textContent = formatElapsed(Math.floor(now - sent));
+    });
+}
+updateTimers();
+setInterval(updateTimers, 30000);
+</script>
+{% endblock %}

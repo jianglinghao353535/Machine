@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+{% block title %}{{ subcategory.name }} - 零件管理{% endblock %}
+{% block page_title %}
+    <a href="{{ url_for('manage_categories') }}" class="text-decoration-none text-muted">机器大类</a>
+    <i class="bi bi-chevron-right mx-1 small"></i>
+    <a href="{{ url_for('manage_subcategories', cid=subcategory.category_id) }}" class="text-decoration-none text-muted">{{ subcategory.category.name }}</a>
+    <i class="bi bi-chevron-right mx-1 small"></i>{{ subcategory.name }}
+{% endblock %}
+{% block head %}
+<style>
+.part-row.done { background: #f0fff4; }
+.part-row.sent { background: #fffbf0; }
+.timer-cell { font-variant-numeric: tabular-nums; }
+.pdf-link { color: #1a56a7; text-decoration:none; }
+.pdf-link:hover { text-decoration:underline; }
+</style>
+{% endblock %}
+{% block content %}
+
+<!-- 添加区域 -->
+<div class="row g-3 mb-4">
+    <!-- 手动添加零件 -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-plus-circle me-2"></i>手动添加零件
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="action" value="add_part">
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small">零件名称 <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control form-control-sm" placeholder="零件名称" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small">指定供应商</label>
+                        <select name="supplier_id" class="form-select form-select-sm">
+                            <option value="">-- 暂不指定 --</option>
+                            {% for s in suppliers %}
+                            <option value="{{ s.id }}">{{ s.display_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">上传图纸（PDF）</label>
+                        <input type="file" name="pdf_file" class="form-control form-control-sm" accept=".pdf">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-plus-circle me-1"></i>添加零件
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- 批量导入Excel -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-file-earmark-excel me-2"></i>批量导入 Excel
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="action" value="import_excel">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">选择 Excel 文件</label>
+                        <input type="file" name="excel_file" class="form-control form-control-sm" accept=".xlsx,.xls" required>
+                        <div class="form-text">第一行为标题行，第A列为零件名称</div>
+                    </div>
+                    <button type="submit" class="btn btn-success btn-sm w-100">
+                        <i class="bi bi-upload me-1"></i>导入零件
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- 统计 -->
+    <div class="col-lg-3">
+        <div class="card h-100">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-bar-chart me-2 text-primary"></i>统计
+            </div>
+            <div class="card-body">
+                {% set total = parts|length %}
+                {% set sent = parts|selectattr('sent_at')|list|length %}
+                {% set done = parts|selectattr('is_completed')|list|length %}
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted small">总零件</span>
+                    <strong>{{ total }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted small">进行中</span>
+                    <strong class="text-warning">{{ sent - done }}</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted small">已完成</span>
+                    <strong class="text-success">{{ done }}</strong>
+                </div>
+                {% if total > 0 %}
+                <div class="progress mt-2" style="height:6px">
+                    <div class="progress-bar bg-success" style="width:{{ (done/total*100)|int }}%"></div>
+                </div>
+                <div class="text-end text-muted" style="font-size:.75rem">{{ (done/total*100)|int }}% 完成</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 零件列表 -->
+<div class="card">
+    <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-gear me-2 text-secondary"></i>零件列表（共 {{ parts|length }} 项）</span>
+        <small class="text-muted">计时每30秒自动刷新</small>
+    </div>
+    <div class="card-body p-0">
+        {% if parts %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle" id="partsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:28px">#</th>
+                        <th>零件名称</th>
+                        <th>供应商</th>
+                        <th>图纸</th>
+                        <th>发出时间</th>
+                        <th>已用时长</th>
+                        <th>状态</th>
+                        <th class="text-center" style="min-width:200px">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for part in parts %}
+                    <tr class="part-row {% if part.is_completed %}done{% elif part.sent_at %}sent{% endif %}" id="row-{{ part.id }}">
+                        <td class="text-muted small">{{ loop.index }}</td>
+                        <td class="fw-semibold">{{ part.name }}</td>
+                        <td>
+                            {% if part.supplier %}
+                            <span class="badge bg-light text-dark border">{{ part.supplier.display_name }}</span>
+                            {% else %}
+                            <span class="text-muted small">未指定</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if part.pdf_filename %}
+                            <a href="{{ url_for('uploaded_file', filename=part.pdf_filename) }}" target="_blank" class="pdf-link" title="{{ part.pdf_original_name }}">
+                                <i class="bi bi-file-earmark-pdf text-danger me-1"></i>查看
+                            </a>
+                            {% else %}
+                            <span class="text-muted small">无</span>
+                            {% endif %}
+                            <!-- 上传/更换PDF -->
+                            <button class="btn btn-link btn-sm p-0 ms-1 text-secondary" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#upload-{{ part.id }}" title="上传/更换图纸">
+                                <i class="bi bi-upload small"></i>
+                            </button>
+                            <div class="collapse" id="upload-{{ part.id }}">
+                                <form method="post" action="{{ url_for('upload_pdf', part_id=part.id) }}" enctype="multipart/form-data" class="mt-1">
+                                    <div class="input-group input-group-sm">
+                                        <input type="file" name="pdf_file" class="form-control form-control-sm" accept=".pdf" required>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">上传</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </td>
+                        <td class="small text-muted">
+                            {% if part.sent_at %}
+                            {{ part.sent_at.strftime('%m-%d %H:%M') }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="timer-cell">
+                            <span id="elapsed-{{ part.id }}">
+                                {% if part.is_completed %}
+                                <span class="text-success small"><i class="bi bi-check-circle me-1"></i>{{ part.elapsed_str() }}</span>
+                                {% elif part.sent_at %}
+                                <span class="elapsed-badge" data-sent="{{ part.sent_at.timestamp() }}">{{ part.elapsed_str() }}</span>
+                                {% else %}
+                                <span class="text-muted small">未发出</span>
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if part.is_completed %}
+                            <span class="badge bg-success"><i class="bi bi-check2 me-1"></i>已完成</span>
+                            {% elif part.sent_at %}
+                            <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>进行中</span>
+                            {% else %}
+                            <span class="badge bg-secondary">待发出</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex flex-wrap gap-1 justify-content-center">
+                                <!-- 发出按钮 -->
+                                {% if not part.sent_at or not part.is_completed %}
+                                <form method="post" action="{{ url_for('send_part', part_id=part.id) }}">
+                                    {% if not part.supplier_id %}
+                                    <select name="supplier_id" class="form-select form-select-sm d-inline-block w-auto me-1" required>
+                                        <option value="">选择供应商</option>
+                                        {% for s in suppliers %}
+                                        <option value="{{ s.id }}">{{ s.display_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-warning fw-semibold" type="submit"
+                                            {% if part.sent_at and not part.is_completed %}title="重新发出"{% endif %}>
+                                        <i class="bi bi-send me-1"></i>{% if part.sent_at and not part.is_completed %}重发{% else %}发出{% endif %}
+                                    </button>
+                                </form>
+                                {% endif %}
+                                <!-- 完成/取消完成 -->
+                                {% if part.sent_at %}
+                                {% if not part.is_completed %}
+                                <form method="post" action="{{ url_for('complete_part', part_id=part.id) }}"
+                                      onsubmit="return confirm('将零件【{{ part.name }}】标记为完成？')">
+                                    <button class="btn btn-sm btn-success fw-semibold">
+                                        <i class="bi bi-check-circle me-1"></i>完成
+                                    </button>
+                                </form>
+                                {% else %}
+                                <form method="post" action="{{ url_for('uncomplete_part', part_id=part.id) }}">
+                                    <button class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i>撤销
+                                    </button>
+                                </form>
+                                {% endif %}
+                                {% endif %}
+                                <!-- 删除 -->
+                                <form method="post" action="{{ url_for('delete_part', part_id=part.id) }}"
+                                      onsubmit="return confirm('确定删除零件【{{ part.name }}】吗？')">
+                                    <button class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-gear" style="font-size:2.5rem"></i>
+            <p class="mt-2">暂无零件，请在上方添加或导入</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 前端动态计时（进行中的零件实时更新显示）
+function formatElapsed(seconds) {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    let parts = [];
+    if (days) parts.push(days + '天');
+    if (hours) parts.push(hours + '小时');
+    parts.push(minutes + '分钟');
+    return parts.join('');
+}
+
+function updateTimers() {
+    const now = Date.now() / 1000;
+    document.querySelectorAll('.elapsed-badge[data-sent]').forEach(el => {
+        const sent = parseFloat(el.getAttribute('data-sent'));
+        const secs = Math.floor(now - sent);
+        el.textContent = formatElapsed(secs);
+    });
+}
+
+updateTimers();
+setInterval(updateTimers, 30000);
+</script>
+{% endblock %}

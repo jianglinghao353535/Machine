@@ -1,0 +1,15 @@
+[Unit]
+Description=Factory Parts Flask Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/factory-parts
+EnvironmentFile=/opt/factory-parts/.env
+ExecStart=/opt/factory-parts/.venv/bin/gunicorn -w 2 -b 0.0.0.0:5000 wsgi:application
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
