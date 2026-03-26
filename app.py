@@ -128,8 +128,10 @@ def init_db():
             # 如果已有公司账号但用户名不是JW，更新为JW/353535
             admin = User.query.filter_by(role='company').first()
             if admin.username != 'JW':
-                admin.username = 'JW'
+                existing_jw = User.query.filter_by(username='JW').first()
                 admin.password_hash = generate_password_hash('353535')
+                if existing_jw is None or existing_jw.id == admin.id:
+                    admin.username = 'JW'
                 db.session.commit()
 
 
