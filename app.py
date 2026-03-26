@@ -117,8 +117,8 @@ def init_db():
         db.create_all()
         if not User.query.filter_by(role='company').first():
             admin = User(
-                username='admin',
-                password_hash=generate_password_hash('admin123'),
+                username='JW',
+                password_hash=generate_password_hash('353535'),
                 role='company',
                 display_name='管理公司'
             )
