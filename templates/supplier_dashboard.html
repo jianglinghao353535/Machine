@@ -57,16 +57,16 @@
                     </div>
                     <span class="badge bg-warning text-dark">进行中</span>
                 </div>
-                <!-- 文件 -->
+                <!-- 图纸包 -->
                 {% if part.pdf_filename %}
                 <div class="mb-2">
                     <a href="{{ url_for('uploaded_file', filename=part.pdf_filename) }}" target="_blank"
                        class="btn btn-sm btn-outline-danger w-100">
-                        <i class="bi bi-file-earmark-pdf me-1"></i>查看文件：{{ part.pdf_original_name or '文件' }}
+                        <i class="bi bi-file-earmark-pdf me-1"></i>查看图纸包：{{ part.pdf_original_name or '图纸包' }}
                     </a>
                 </div>
                 {% else %}
-                <div class="mb-2 text-muted small"><i class="bi bi-exclamation-circle me-1"></i>暂无文件</div>
+                <div class="mb-2 text-muted small"><i class="bi bi-exclamation-circle me-1"></i>暂无图纸包</div>
                 {% endif %}
                 <!-- 时间 -->
                 <div class="d-flex justify-content-between align-items-center mt-2">
@@ -107,7 +107,7 @@
                 {% if part.pdf_filename %}
                 <a href="{{ url_for('uploaded_file', filename=part.pdf_filename) }}" target="_blank"
                    class="btn btn-sm btn-outline-danger w-100 mb-2">
-                    <i class="bi bi-file-earmark-pdf me-1"></i>{{ part.pdf_original_name or '查看文件' }}
+                    <i class="bi bi-file-earmark-pdf me-1"></i>{{ part.pdf_original_name or '查看图纸包' }}
                 </a>
                 {% endif %}
                 <div class="d-flex justify-content-between text-muted small mt-1">

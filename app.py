@@ -527,7 +527,9 @@ def uploaded_file(filename):
         return '文件不存在', 404
     if role == 'supplier' and part.supplier_id != uid:
         return '无权访问此文件', 403
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=False)
+    ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+    as_attachment = ext in {'zip', 'rar', '7z'}
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=as_attachment)
 
 
 # ==================== API：获取零件剩余时间（Ajax刷新） ====================

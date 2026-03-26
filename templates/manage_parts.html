@@ -42,7 +42,7 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">上传文件（PDF/ZIP/RAR/7Z）</label>
+                        <label class="form-label fw-semibold small">上传图纸包（支持单个 PDF 或整包 ZIP/RAR/7Z）</label>
                         <input type="file" name="pdf_file" class="form-control form-control-sm" accept=".pdf,.zip,.rar,.7z">
                     </div>
                     <button type="submit" class="btn btn-primary btn-sm w-100">
@@ -151,7 +151,7 @@
                         <th style="width:28px">#</th>
                         <th>零件名称</th>
                         <th>供应商</th>
-                        <th>文件</th>
+                        <th>图纸包</th>
                         <th>发出时间</th>
                         <th>已用时长</th>
                         <th>状态</th>
@@ -178,7 +178,7 @@
                             {% else %}
                             <span class="text-muted small">无</span>
                             {% endif %}
-                            <!-- 上传/更换文件 -->
+                            <!-- 上传/更换图纸包 -->
                             <button class="btn btn-link btn-sm p-0 ms-1 text-secondary" type="button"
                                     data-bs-toggle="collapse" data-bs-target="#upload-{{ part.id }}" title="上传/更换图纸">
                                 <i class="bi bi-upload small"></i>
