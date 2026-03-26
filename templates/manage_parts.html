@@ -42,8 +42,8 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">上传图纸（PDF）</label>
-                        <input type="file" name="pdf_file" class="form-control form-control-sm" accept=".pdf">
+                        <label class="form-label fw-semibold small">上传文件（PDF/ZIP/RAR/7Z）</label>
+                        <input type="file" name="pdf_file" class="form-control form-control-sm" accept=".pdf,.zip,.rar,.7z">
                     </div>
                     <button type="submit" class="btn btn-primary btn-sm w-100">
                         <i class="bi bi-plus-circle me-1"></i>添加零件
@@ -106,6 +106,36 @@
     </div>
 </div>
 
+<!-- 批量上传图纸（ZIP） -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-file-zip me-2"></i>批量上传图纸（ZIP 压缩包）
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('upload_zip', sub_id=subcategory.id) }}" enctype="multipart/form-data">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-7">
+                            <label class="form-label fw-semibold small">选择 ZIP 文件</label>
+                            <input type="file" name="zip_file" class="form-control form-control-sm" accept=".zip" required>
+                            <div class="form-text">
+                                ZIP 包内的 PDF 文件将按<strong>文件名</strong>自动匹配同名零件，并完成图纸上传。<br>
+                                例如：零件名为「螺栓」，则 ZIP 内应包含「螺栓.pdf」。
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-info btn-sm text-white w-100">
+                                <i class="bi bi-upload me-1"></i>解压并匹配上传
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 零件列表 -->
 <div class="card">
     <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
@@ -121,7 +151,7 @@
                         <th style="width:28px">#</th>
                         <th>零件名称</th>
                         <th>供应商</th>
-                        <th>图纸</th>
+                        <th>文件</th>
                         <th>发出时间</th>
                         <th>已用时长</th>
                         <th>状态</th>
@@ -148,7 +178,7 @@
                             {% else %}
                             <span class="text-muted small">无</span>
                             {% endif %}
-                            <!-- 上传/更换PDF -->
+                            <!-- 上传/更换文件 -->
                             <button class="btn btn-link btn-sm p-0 ms-1 text-secondary" type="button"
                                     data-bs-toggle="collapse" data-bs-target="#upload-{{ part.id }}" title="上传/更换图纸">
                                 <i class="bi bi-upload small"></i>
@@ -156,7 +186,7 @@
                             <div class="collapse" id="upload-{{ part.id }}">
                                 <form method="post" action="{{ url_for('upload_pdf', part_id=part.id) }}" enctype="multipart/form-data" class="mt-1">
                                     <div class="input-group input-group-sm">
-                                        <input type="file" name="pdf_file" class="form-control form-control-sm" accept=".pdf" required>
+                                        <input type="file" name="pdf_file" class="form-control form-control-sm" accept=".pdf,.zip,.rar,.7z" required>
                                         <button type="submit" class="btn btn-sm btn-outline-primary">上传</button>
                                     </div>
                                 </form>

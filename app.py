@@ -4,6 +4,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import os
+import io
+import zipfile
 import openpyxl
 import json
 
@@ -21,7 +23,7 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', '0') == '1'
 
-ALLOWED_EXTENSIONS = {'pdf'}
+ALLOWED_EXTENSIONS = {'pdf', 'zip', 'rar', '7z'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -407,7 +409,7 @@ def upload_pdf(part_id):
         return redirect(request.referrer)
     f = request.files['pdf_file']
     if not f or not f.filename or not allowed_file(f.filename):
-        flash('请上传有效的PDF文件', 'danger')
+        flash('请上传有效的文件（PDF/ZIP/RAR/7Z）', 'danger')
         return redirect(request.referrer)
     if part.pdf_filename:
         try:
@@ -421,8 +423,83 @@ def upload_pdf(part_id):
     part.pdf_filename = save_name
     part.pdf_original_name = f.filename
     db.session.commit()
-    flash('PDF图纸上传成功', 'success')
+    flash('文件上传成功', 'success')
     return redirect(request.referrer)
+
+
+@app.route('/company/subcategories/<int:sub_id>/upload_zip', methods=['POST'])
+@login_required(role='company')
+def upload_zip(sub_id):
+    sub = MachineSubcategory.query.get_or_404(sub_id)
+    if 'zip_file' not in request.files:
+        flash('请选择压缩文件', 'danger')
+        return redirect(url_for('manage_parts', sub_id=sub_id))
+    zf = request.files['zip_file']
+    if not zf or not zf.filename:
+        flash('请选择压缩文件', 'danger')
+        return redirect(url_for('manage_parts', sub_id=sub_id))
+    ext = zf.filename.rsplit('.', 1)[-1].lower() if '.' in zf.filename else ''
+    if ext != 'zip':
+        flash('仅支持 .zip 格式的压缩文件', 'danger')
+        return redirect(url_for('manage_parts', sub_id=sub_id))
+    parts_list = Part.query.filter_by(subcategory_id=sub_id).all()
+    matched = 0
+    unmatched_names = []
+    try:
+        with zipfile.ZipFile(io.BytesIO(zf.read())) as z:
+            for info in z.infolist():
+                if info.is_dir():
+                    continue
+                # 只处理 PDF 文件，防止路径穿越
+                raw_name = os.path.basename(info.filename)
+                if not raw_name.lower().endswith('.pdf'):
+                    continue
+                safe_name = secure_filename(raw_name)
+                if not safe_name:
+                    continue
+                # 按文件名（不含扩展名）匹配零件名称
+                stem = safe_name.rsplit('.', 1)[0].lower()
+                target_part = None
+                # 先精确匹配
+                for p in parts_list:
+                    if p.name.strip().lower() == stem:
+                        target_part = p
+                        break
+                # 再模糊匹配（文件名包含零件名 或 零件名包含文件名）
+                if target_part is None:
+                    for p in parts_list:
+                        pname = p.name.strip().lower()
+                        if pname in stem or stem in pname:
+                            target_part = p
+                            break
+                if target_part is None:
+                    unmatched_names.append(safe_name)
+                    continue
+                pdf_data = z.read(info.filename)
+                timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
+                save_name = f'{timestamp}_{safe_name}'
+                save_path = os.path.join(app.config['UPLOAD_FOLDER'], save_name)
+                with open(save_path, 'wb') as out:
+                    out.write(pdf_data)
+                # 删除旧图纸文件
+                if target_part.pdf_filename:
+                    try:
+                        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], target_part.pdf_filename))
+                    except OSError:
+                        pass
+                target_part.pdf_filename = save_name
+                target_part.pdf_original_name = raw_name
+                matched += 1
+        db.session.commit()
+        msg = f'ZIP 解压完成：成功匹配并上传 {matched} 个图纸'
+        if unmatched_names:
+            msg += f'，{len(unmatched_names)} 个文件未匹配到零件（{"、".join(unmatched_names[:5])}{"..." if len(unmatched_names) > 5 else ""}）'
+        flash(msg, 'success' if matched > 0 else 'warning')
+    except zipfile.BadZipFile:
+        flash('文件损坏或不是有效的 ZIP 文件', 'danger')
+    except Exception as e:
+        flash(f'解压失败：{str(e)}', 'danger')
+    return redirect(url_for('manage_parts', sub_id=sub_id))
 
 
 # ==================== 路由：供应商端 ====================
