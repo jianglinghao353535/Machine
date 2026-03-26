@@ -124,6 +124,13 @@ def init_db():
             )
             db.session.add(admin)
             db.session.commit()
+        else:
+            # 如果已有公司账号但用户名不是JW，更新为JW/353535
+            admin = User.query.filter_by(role='company').first()
+            if admin.username != 'JW':
+                admin.username = 'JW'
+                admin.password_hash = generate_password_hash('353535')
+                db.session.commit()
 
 
 # ==================== 路由：认证 ====================
