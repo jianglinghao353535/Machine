@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from datetime import datetime, timezone
+from datetime import datetime
 import os
 import openpyxl
 import json
@@ -36,13 +36,13 @@ class User(db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(20), nullable=False)  # 'company' or 'supplier'
     display_name = db.Column(db.String(200), nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
 
 class MachineCategory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=datetime.now)
     subcategories = db.relationship('MachineSubcategory', backref='category', lazy=True, cascade='all, delete-orphan')
 
 
@@ -50,7 +50,7 @@ class MachineSubcategory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('machine_category.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=datetime.now)
     parts = db.relationship('Part', backref='subcategory', lazy=True, cascade='all, delete-orphan')
 
 
@@ -64,14 +64,14 @@ class Part(db.Model):
     sent_at = db.Column(db.DateTime, nullable=True)       # 发出时间
     completed_at = db.Column(db.DateTime, nullable=True)   # 完成时间
     is_completed = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=datetime.now)
     supplier = db.relationship('User', backref='parts', foreign_keys=[supplier_id])
 
     def elapsed_seconds(self):
         if self.sent_at is None:
             return None
-        end = self.completed_at if self.is_completed and self.completed_at else datetime.now(timezone.utc)
-        sent = self.sent_at.replace(tzinfo=timezone.utc) if self.sent_at.tzinfo is None else self.sent_at
+        end = self.completed_at if self.is_completed and self.completed_at else datetime.now()
+        sent = self.sent_at
         return int((end - sent).total_seconds())
 
     def elapsed_str(self):
@@ -352,7 +352,7 @@ def send_part(part_id):
     if not part.supplier_id:
         flash('请先指定供应商再发出', 'danger')
         return redirect(request.referrer or url_for('company_dashboard'))
-    part.sent_at = datetime.now(timezone.utc)
+    part.sent_at = datetime.now()
     part.is_completed = False
     part.completed_at = None
     db.session.commit()
@@ -365,7 +365,7 @@ def send_part(part_id):
 def complete_part(part_id):
     part = Part.query.get_or_404(part_id)
     part.is_completed = True
-    part.completed_at = datetime.now(timezone.utc)
+    part.completed_at = datetime.now()
     db.session.commit()
     flash(f'零件 [{part.name}] 已标记为完成', 'success')
     return redirect(request.referrer or url_for('manage_parts', sub_id=part.subcategory_id))
